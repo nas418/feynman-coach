@@ -392,7 +392,9 @@
   // ------------------------------------------------------------------
   // Config
   // ------------------------------------------------------------------
-  const API_BASE = "http://localhost:8000";
+  // Empty string = "same server that served this page". Works locally
+  // (when opened via http://127.0.0.1:8000) and once deployed to any URL.
+  const API_BASE = "";
 
   const PERSONAS = {
     five_year_old: {
