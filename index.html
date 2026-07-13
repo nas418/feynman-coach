@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Feynman Coach — Teach it. Test it. Master it.</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --board: #17211d;
+    --board-panel: #1f2b25;
+    --board-panel-light: #26332c;
+    --chalk: #eae6da;
+    --chalk-dim: #a9b6ac;
+    --chalk-rule: rgba(234, 230, 218, 0.16);
+    --yellow: #f2c14e;
+    --coral: #e8735b;
+    --blue: #6fa8dc;
+    --green: #7fb77e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background-color: var(--board);
+    color: var(--chalk);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  h1, h2, h3, .font-chalk { font-family: 'Patrick Hand', cursive; letter-spacing: 0.3px; }
+
+  /* Chalk dust texture overlay — subtle, fixed, non-interactive */
+  .dust-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .app-shell { position: relative; z-index: 1; }
+
+  .chalk-panel {
+    background: var(--board-panel);
+    border: 2px dashed var(--chalk-rule);
+    border-radius: 16px 20px 14px 22px;
+  }
+
+  .chalk-underline {
+    display: inline-block;
+    position: relative;
+  }
+  .chalk-underline::after {
+    content: "";
+    position: absolute;
+    left: -2%;
+    right: -2%;
+    bottom: -6px;
+    height: 6px;
+    background: currentColor;
+    opacity: 0.35;
+    border-radius: 3px;
+    transform: rotate(-0.6deg);
+  }
+
+  /* Buttons */
+  .chalk-btn {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1.15rem;
+    letter-spacing: 0.4px;
+    border: 2px dashed var(--chalk-rule);
+    border-radius: 12px 16px 10px 18px;
+    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .chalk-btn:hover:not(:disabled) { transform: translateY(-1px) rotate(-0.3deg); }
+  .chalk-btn:active:not(:disabled) { transform: translateY(0) rotate(0); }
+  .chalk-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .chalk-btn-primary {
+    background: var(--yellow);
+    color: #1c1607;
+    border-color: rgba(0,0,0,0.25);
+  }
+  .chalk-btn-primary:hover:not(:disabled) { background: #f6cd6b; }
+
+  .chalk-btn-ghost {
+    background: transparent;
+    color: var(--chalk);
+  }
+  .chalk-btn-ghost:hover:not(:disabled) { background: rgba(234,230,218,0.06); }
+
+  .chalk-btn-danger-ghost {
+    background: transparent;
+    color: var(--coral);
+    border-color: rgba(232,115,91,0.4);
+  }
+  .chalk-btn-danger-ghost:hover:not(:disabled) { background: rgba(232,115,91,0.08); }
+
+  textarea, input[type="text"] {
+    background: var(--board-panel-light);
+    border: 2px dashed var(--chalk-rule);
+    border-radius: 10px 14px 12px 16px;
+    color: var(--chalk);
+    font-family: 'Inter', sans-serif;
+  }
+  textarea::placeholder, input::placeholder { color: var(--chalk-dim); }
+  textarea:focus, input:focus { outline: none; border-color: var(--yellow); }
+
+  :focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+
+  /* Progress track */
+  .progress-step {
+    font-family: 'Patrick Hand', cursive;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--chalk-dim);
+  }
+  .progress-step .step-num {
+    width: 34px; height: 34px;
+    border: 2px dashed var(--chalk-rule);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+  }
+  .progress-step.active .step-num, .progress-step.done .step-num {
+    border-color: var(--yellow);
+    color: var(--yellow);
+  }
+  .progress-step.active { color: var(--chalk); }
+  .progress-step.done { color: var(--chalk); }
+  .progress-line {
+    flex: 1;
+    height: 0;
+    border-top: 2px dashed var(--chalk-rule);
+    margin-top: 17px;
+  }
+
+  /* Persona cards */
+  .persona-card {
+    background: var(--board-panel-light);
+    border: 2px dashed var(--chalk-rule);
+    border-radius: 16px 20px 14px 20px;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .persona-card:hover { transform: translateY(-2px); }
+  .persona-card.selected {
+    border-color: var(--persona-color, var(--yellow));
+    border-style: solid;
+    box-shadow: 0 0 0 1px var(--persona-color, var(--yellow)) inset;
+  }
+  .persona-emoji { font-size: 2.2rem; }
+
+  /* Chat */
+  #messages { scroll-behavior: smooth; }
+  .msg-row { display: flex; }
+  .msg-bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    line-height: 1.45;
+    font-size: 0.96rem;
+  }
+  .msg-user {
+    margin-left: auto;
+    background: var(--yellow);
+    color: #1c1607;
+    border-radius: 14px 14px 4px 14px;
+  }
+  .msg-assistant {
+    background: var(--board-panel-light);
+    border: 2px dashed var(--persona-color, var(--chalk-rule));
+    border-radius: 14px 14px 14px 4px;
+  }
+  .persona-tag {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 0.85rem;
+    color: var(--persona-color, var(--chalk-dim));
+    margin-bottom: 2px;
+  }
+
+  .typing-dots span {
+    display: inline-block;
+    width: 6px; height: 6px;
+    margin-right: 3px;
+    border-radius: 50%;
+    background: var(--chalk-dim);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* Score ring */
+  .score-ring-fill {
+    transition: stroke-dashoffset 1s ease, stroke 0.4s ease;
+  }
+  .score-good { stroke: var(--green) !important; }
+  .score-mid { stroke: var(--yellow) !important; }
+  .score-low { stroke: var(--coral) !important; }
+
+  /* Tag pills for debrief lists */
+  .tag-pill {
+    border-radius: 10px 14px 10px 14px;
+    padding: 8px 12px;
+    font-size: 0.92rem;
+    border: 2px dashed;
+  }
+  .tag-mastered { border-color: rgba(127,183,126,0.5); background: rgba(127,183,126,0.08); }
+  .tag-fuzzy { border-color: rgba(242,193,78,0.5); background: rgba(242,193,78,0.08); }
+  .tag-missed { border-color: rgba(232,115,91,0.5); background: rgba(232,115,91,0.08); }
+
+  .screen.hidden { display: none; }
+
+  .fade-in { animation: fadeIn 0.35s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--chalk-rule); border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<div class="dust-overlay"></div>
+
+<div class="app-shell max-w-3xl mx-auto px-4 py-8 sm:py-10">
+
+  <!-- Header -->
+  <header class="text-center mb-6">
+    <h1 class="text-4xl sm:text-5xl font-chalk chalk-underline" style="color: var(--yellow);">Feynman Coach</h1>
+    <p class="text-sm sm:text-base mt-3" style="color: var(--chalk-dim);">Teach it. Test it. Master it.</p>
+  </header>
+
+  <!-- Error banner -->
+  <div id="error-banner" class="hidden mb-5 chalk-panel px-4 py-3 flex items-start justify-between gap-3" style="border-color: rgba(232,115,91,0.5);">
+    <p id="error-banner-text" class="text-sm" style="color: var(--coral);"></p>
+    <button onclick="dismissError()" class="text-sm shrink-0" style="color: var(--coral);">&times;</button>
+  </div>
+
+  <!-- Progress track -->
+  <nav id="progress-track" class="flex items-start mb-8 px-2">
+    <div class="progress-step active" id="step-1">
+      <div class="step-num">1</div>
+      <span>Setup</span>
+    </div>
+    <div class="progress-line"></div>
+    <div class="progress-step" id="step-2">
+      <div class="step-num">2</div>
+      <span>Teach</span>
+    </div>
+    <div class="progress-line"></div>
+    <div class="progress-step" id="step-3">
+      <div class="step-num">3</div>
+      <span>Debrief</span>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ============ SCREEN 1: SETUP ============ -->
+    <section id="setup-screen" class="screen fade-in">
+      <div class="chalk-panel p-5 sm:p-6 mb-5">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-2xl font-chalk">Your study material</h2>
+          <label for="file-input" class="chalk-btn chalk-btn-ghost px-3 py-1.5 text-sm cursor-pointer">
+            📎 Attach file
+          </label>
+          <input type="file" id="file-input" accept=".txt,.md,.pdf" class="hidden" onchange="handleFileInput(event)" />
+        </div>
+        <p class="text-sm mb-3" style="color: var(--chalk-dim);">Paste your notes below, or attach a .txt, .md, or .pdf file.</p>
+        <textarea id="material-input" rows="9" placeholder="Paste your notes, textbook excerpt, or study material here..." class="w-full p-3"></textarea>
+        <p id="file-chip" class="hidden text-xs mt-2" style="color: var(--chalk-dim);"></p>
+      </div>
+
+      <div class="chalk-panel p-5 sm:p-6 mb-5">
+        <h2 class="text-2xl font-chalk mb-2">Concept focus</h2>
+        <p class="text-sm mb-3" style="color: var(--chalk-dim);">What specific concept should the conversation zero in on? (optional, but sharpens the debrief)</p>
+        <input type="text" id="concept-input" placeholder="e.g. photosynthesis, Newton's second law, supply and demand..." class="w-full p-3" />
+      </div>
+
+      <div class="chalk-panel p-5 sm:p-6 mb-5">
+        <h2 class="text-2xl font-chalk mb-1">Pick who you're teaching</h2>
+        <p class="text-sm mb-4" style="color: var(--chalk-dim);">Each one pokes at your understanding differently.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+          <div class="persona-card p-4 text-center" data-persona="five_year_old" style="--persona-color: var(--yellow);" onclick="selectPersona('five_year_old', this)">
+            <div class="persona-emoji mb-2">🧸</div>
+            <h3 class="font-chalk text-xl mb-1">The 5-Year-Old</h3>
+            <p class="text-xs" style="color: var(--chalk-dim);">Stops you cold at any big word or jargon.</p>
+          </div>
+
+          <div class="persona-card p-4 text-center" data-persona="skeptical_teen" style="--persona-color: var(--coral);" onclick="selectPersona('skeptical_teen', this)">
+            <div class="persona-emoji mb-2">🎧</div>
+            <h3 class="font-chalk text-xl mb-1">The Skeptical Teen</h3>
+            <p class="text-xs" style="color: var(--chalk-dim);">Bored, blunt, demands "why should I care?"</p>
+          </div>
+
+          <div class="persona-card p-4 text-center" data-persona="college_peer" style="--persona-color: var(--blue);" onclick="selectPersona('college_peer', this)">
+            <div class="persona-emoji mb-2">📚</div>
+            <h3 class="font-chalk text-xl mb-1">The College Peer</h3>
+            <p class="text-xs" style="color: var(--chalk-dim);">Hunts for skipped steps and logic gaps.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button id="start-btn" class="chalk-btn chalk-btn-primary px-6 py-2.5" disabled onclick="startSession()">Start Teaching →</button>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 2: CHAT ============ -->
+    <section id="chat-screen" class="screen hidden">
+      <div class="chalk-panel p-4 sm:p-5 mb-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span id="chat-persona-emoji" class="text-3xl"></span>
+          <div>
+            <h2 id="chat-persona-name" class="font-chalk text-2xl leading-tight"></h2>
+            <p id="chat-concept-label" class="text-xs" style="color: var(--chalk-dim);"></p>
+          </div>
+        </div>
+        <button class="chalk-btn chalk-btn-danger-ghost px-4 py-2 text-sm" onclick="finishSession()">Finish Session</button>
+      </div>
+
+      <div id="messages" class="chalk-panel p-4 sm:p-5 mb-4 flex flex-col gap-3 overflow-y-auto" style="height: 50vh;"></div>
+
+      <div class="flex gap-2">
+        <input type="text" id="chat-input" placeholder="Explain it in your own words..." class="flex-1 p-3" onkeydown="handleChatKeydown(event)" />
+        <button id="send-btn" class="chalk-btn chalk-btn-primary px-5" onclick="sendMessage()">Send</button>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN 3: DEBRIEF ============ -->
+    <section id="debrief-screen" class="screen hidden">
+      <div class="chalk-panel p-6 sm:p-8 mb-5 text-center">
+        <h2 class="text-2xl font-chalk mb-4">Your Mastery Score</h2>
+        <div class="relative inline-block" style="width: 160px; height: 160px;">
+          <svg viewBox="0 0 120 120" width="160" height="160">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--chalk-rule)" stroke-width="10" />
+            <circle id="score-ring-fill" class="score-ring-fill" cx="60" cy="60" r="52" fill="none"
+                    stroke="var(--yellow)" stroke-width="10" stroke-linecap="round"
+                    stroke-dasharray="326.7" stroke-dashoffset="326.7"
+                    transform="rotate(-90 60 60)" />
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="font-chalk text-4xl"><span id="score-value">0</span>%</span>
+          </div>
+        </div>
+        <p id="debrief-summary" class="text-sm mt-5 max-w-xl mx-auto" style="color: var(--chalk-dim);"></p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="chalk-panel p-4">
+          <h3 class="font-chalk text-xl mb-3" style="color: var(--green);">✓ Mastered</h3>
+          <div id="mastered-list" class="flex flex-col gap-2"></div>
+        </div>
+        <div class="chalk-panel p-4">
+          <h3 class="font-chalk text-xl mb-3" style="color: var(--yellow);">~ Fuzzy</h3>
+          <div id="fuzzy-list" class="flex flex-col gap-2"></div>
+        </div>
+        <div class="chalk-panel p-4">
+          <h3 class="font-chalk text-xl mb-3" style="color: var(--coral);">✕ Missed</h3>
+          <div id="missed-list" class="flex flex-col gap-2"></div>
+        </div>
+      </div>
+
+      <div class="flex justify-center">
+        <button class="chalk-btn chalk-btn-ghost px-6 py-2.5" onclick="resetApp()">Start a New Session</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // ------------------------------------------------------------------
+  // Config
+  // ------------------------------------------------------------------
+  const API_BASE = "http://localhost:8000";
+
+  const PERSONAS = {
+    five_year_old: {
+      name: "The 5-Year-Old",
+      emoji: "🧸",
+      colorVar: "var(--yellow)",
+      opener: "Ooo okay! I'm ready! Teach me teach me! What are we gonna learn about today?",
+    },
+    skeptical_teen: {
+      name: "The Skeptical Teen",
+      emoji: "🎧",
+      colorVar: "var(--coral)",
+      opener: "Ugh, fine, whatever. So what's this thing I'm supposed to care about?",
+    },
+    college_peer: {
+      name: "The College Peer",
+      emoji: "📚",
+      colorVar: "var(--blue)",
+      opener: "Alright, hit me. Walk me through it — and don't skip steps, I'll notice.",
+    },
+  };
+
+  // ------------------------------------------------------------------
+  // State
+  // ------------------------------------------------------------------
+  const state = {
+    material: "",
+    concept: "",
+    persona: null,
+    history: [], // [{role: 'user'|'assistant', content: str}]
+  };
+
+  // ------------------------------------------------------------------
+  // Error banner
+  // ------------------------------------------------------------------
+  function showError(msg) {
+    document.getElementById("error-banner-text").textContent = msg;
+    document.getElementById("error-banner").classList.remove("hidden");
+  }
+  function dismissError() {
+    document.getElementById("error-banner").classList.add("hidden");
+  }
+
+  // ------------------------------------------------------------------
+  // Screen / progress helpers
+  // ------------------------------------------------------------------
+  function showScreen(id) {
+    ["setup-screen", "chat-screen", "debrief-screen"].forEach((s) => {
+      document.getElementById(s).classList.toggle("hidden", s !== id);
+    });
+    document.getElementById(id).classList.add("fade-in");
+  }
+
+  function setProgress(stepNum) {
+    for (let i = 1; i <= 3; i++) {
+      const el = document.getElementById(`step-${i}`);
+      el.classList.remove("active", "done");
+      if (i < stepNum) el.classList.add("done");
+      if (i === stepNum) el.classList.add("active");
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Setup screen logic
+  // ------------------------------------------------------------------
+  function updateStartButtonState() {
+    const hasMaterial = document.getElementById("material-input").value.trim().length > 0;
+    document.getElementById("start-btn").disabled = !(hasMaterial && state.persona);
+  }
+  document.getElementById("material-input").addEventListener("input", updateStartButtonState);
+
+  function selectPersona(key, cardEl) {
+    state.persona = key;
+    document.querySelectorAll(".persona-card").forEach((c) => c.classList.remove("selected"));
+    cardEl.classList.add("selected");
+    updateStartButtonState();
+  }
+
+  async function handleFileInput(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const chip = document.getElementById("file-chip");
+    chip.textContent = `Loading "${file.name}"...`;
+    chip.classList.remove("hidden");
+
+    const isPlainText = /\.(txt|md)$/i.test(file.name) || file.type === "text/plain";
+
+    try {
+      if (isPlainText) {
+        const text = await file.text();
+        document.getElementById("material-input").value = text;
+      } else {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Upload failed (${res.status})`);
+        }
+        const data = await res.json();
+        document.getElementById("material-input").value = data.text;
+      }
+      chip.textContent = `Loaded: ${file.name}`;
+      updateStartButtonState();
+    } catch (err) {
+      chip.classList.add("hidden");
+      showError(`Couldn't read that file: ${err.message}`);
+    }
+  }
+
+  function startSession() {
+    state.material = document.getElementById("material-input").value.trim();
+    state.concept = document.getElementById("concept-input").value.trim();
+    state.history = [];
+
+    if (!state.material || !state.persona) return;
+
+    const persona = PERSONAS[state.persona];
+    document.getElementById("chat-persona-emoji").textContent = persona.emoji;
+    document.getElementById("chat-persona-name").textContent = persona.name;
+    document.getElementById("chat-concept-label").textContent = state.concept
+      ? `Teaching: ${state.concept}`
+      : "Teaching session";
+
+    document.getElementById("messages").innerHTML = "";
+    renderMessage("assistant", persona.opener, persona);
+    state.history.push({ role: "assistant", content: persona.opener });
+
+    showScreen("chat-screen");
+    setProgress(2);
+    document.getElementById("chat-input").focus();
+  }
+
+  // ------------------------------------------------------------------
+  // Chat screen logic
+  // ------------------------------------------------------------------
+  function renderMessage(role, text, persona) {
+    const container = document.getElementById("messages");
+    const row = document.createElement("div");
+    row.className = "msg-row fade-in";
+
+    const bubble = document.createElement("div");
+    bubble.className = `msg-bubble ${role === "user" ? "msg-user" : "msg-assistant"}`;
+
+    if (role === "assistant") {
+      const p = persona || PERSONAS[state.persona];
+      bubble.style.setProperty("--persona-color", p.colorVar);
+      const tag = document.createElement("div");
+      tag.className = "persona-tag";
+      tag.style.color = p.colorVar;
+      tag.textContent = `${p.emoji} ${p.name}`;
+      bubble.appendChild(tag);
+    }
+
+    const textEl = document.createElement("div");
+    textEl.textContent = text;
+    bubble.appendChild(textEl);
+
+    row.appendChild(bubble);
+    container.appendChild(row);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function showTyping() {
+    const container = document.getElementById("messages");
+    const row = document.createElement("div");
+    row.className = "msg-row fade-in";
+    row.id = "typing-row";
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble msg-assistant";
+    bubble.style.setProperty("--persona-color", PERSONAS[state.persona].colorVar);
+    bubble.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+    row.appendChild(bubble);
+    container.appendChild(row);
+    container.scrollTop = container.scrollHeight;
+  }
+  function hideTyping() {
+    const row = document.getElementById("typing-row");
+    if (row) row.remove();
+  }
+
+  function handleChatKeydown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      sendMessage();
+    }
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById("chat-input");
+    const text = input.value.trim();
+    if (!text) return;
+
+    renderMessage("user", text);
+    input.value = "";
+    document.getElementById("send-btn").disabled = true;
+    showTyping();
+
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          material: state.material,
+          concept: state.concept,
+          persona: state.persona,
+          history: state.history,
+          message: text,
+        }),
+      });
+
+      hideTyping();
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      state.history.push({ role: "user", content: text });
+      state.history.push({ role: "assistant", content: data.reply });
+      renderMessage("assistant", data.reply);
+    } catch (err) {
+      hideTyping();
+      showError(`Couldn't get a reply: ${err.message}`);
+    } finally {
+      document.getElementById("send-btn").disabled = false;
+      input.focus();
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Debrief screen logic
+  // ------------------------------------------------------------------
+  async function finishSession() {
+    const studentTurns = state.history.filter((m) => m.role === "user");
+    if (studentTurns.length === 0) {
+      showError("Explain at least a little before finishing — there's nothing to grade yet.");
+      return;
+    }
+    if (!confirm("Finish this session and see your debrief?")) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/debrief`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          material: state.material,
+          concept: state.concept,
+          history: state.history,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      renderDebrief(data);
+      showScreen("debrief-screen");
+      setProgress(3);
+    } catch (err) {
+      showError(`Couldn't generate your debrief: ${err.message}`);
+    }
+  }
+
+  function renderDebrief(data) {
+    const ring = document.getElementById("score-ring-fill");
+    const circumference = 2 * Math.PI * 52;
+    const offset = circumference * (1 - data.score / 100);
+
+    ring.classList.remove("score-good", "score-mid", "score-low");
+    if (data.score >= 80) ring.classList.add("score-good");
+    else if (data.score >= 50) ring.classList.add("score-mid");
+    else ring.classList.add("score-low");
+
+    // Force a reflow so the transition animates from the previous state.
+    ring.style.strokeDashoffset = circumference;
+    requestAnimationFrame(() => {
+      ring.style.strokeDashoffset = offset;
+    });
+
+    document.getElementById("score-value").textContent = data.score;
+    document.getElementById("debrief-summary").textContent = data.summary || "";
+
+    fillList("mastered-list", data.mastered, "tag-mastered");
+    fillList("fuzzy-list", data.fuzzy, "tag-fuzzy");
+    fillList("missed-list", data.missed, "tag-missed");
+  }
+
+  function fillList(containerId, items, tagClass) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+    if (!items || items.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "text-xs";
+      empty.style.color = "var(--chalk-dim)";
+      empty.textContent = "Nothing here.";
+      container.appendChild(empty);
+      return;
+    }
+    items.forEach((item) => {
+      const pill = document.createElement("div");
+      pill.className = `tag-pill ${tagClass}`;
+      pill.textContent = item;
+      container.appendChild(pill);
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Reset
+  // ------------------------------------------------------------------
+  function resetApp() {
+    state.material = "";
+    state.concept = "";
+    state.persona = null;
+    state.history = [];
+
+    document.getElementById("material-input").value = "";
+    document.getElementById("concept-input").value = "";
+    document.getElementById("file-chip").classList.add("hidden");
+    document.querySelectorAll(".persona-card").forEach((c) => c.classList.remove("selected"));
+    document.getElementById("start-btn").disabled = true;
+
+    showScreen("setup-screen");
+    setProgress(1);
+  }
+</script>
+
+</body>
+</html>
