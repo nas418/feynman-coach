@@ -40,6 +40,7 @@ from typing import List, Literal, Optional
 import requests
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 # ==========================================================================
@@ -355,8 +356,22 @@ def extract_json(text: str) -> dict:
 # Routes
 # ==========================================================================
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
+    """Serve the frontend directly, so the whole app is one live URL."""
+    index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {
+        "status": "ok",
+        "service": "Feynman Technique Study App API",
+        "model": AI_MODEL,
+        "api_key_configured": bool(AI_API_KEY),
+    }
+
+
+@app.get("/api/status")
+def status():
     return {
         "status": "ok",
         "service": "Feynman Technique Study App API",
