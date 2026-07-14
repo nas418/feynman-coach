@@ -473,9 +473,18 @@
     updateStartButtonState();
   }
 
+  const ALLOWED_UPLOAD_EXTENSIONS = [".txt", ".md", ".pdf"];
+
   async function handleFileInput(event) {
     const file = event.target.files[0];
     if (!file) return;
+
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) {
+      showError(`"${file.name}" isn't a supported file type. Please upload a .txt, .md, or .pdf file.`);
+      event.target.value = ""; // reset the picker so the same bad file can't linger
+      return;
+    }
 
     const chip = document.getElementById("file-chip");
     chip.textContent = `Loading "${file.name}"...`;
@@ -511,7 +520,18 @@
     state.concept = document.getElementById("concept-input").value.trim();
     state.history = [];
 
-    if (!state.material || !state.persona) return;
+    if (!state.material && !state.persona) {
+      showError("Add your study material and pick a persona before starting.");
+      return;
+    }
+    if (!state.material) {
+      showError("Add some study material before starting.");
+      return;
+    }
+    if (!state.persona) {
+      showError("Pick a persona to teach before starting.");
+      return;
+    }
 
     const persona = PERSONAS[state.persona];
     document.getElementById("chat-persona-emoji").textContent = persona.emoji;

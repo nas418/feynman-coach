@@ -53,6 +53,11 @@ AI_MODEL: str = os.getenv("AI_MODEL", "llama-3.3-70b-versatile")
 
 REQUEST_TIMEOUT_SECONDS = 30
 
+# Only these file types are accepted for study-material uploads. Enforced
+# here (server-side) as well as in the frontend — client-side checks can
+# always be bypassed, so this is the check that actually matters.
+ALLOWED_UPLOAD_EXTENSIONS = {".txt", ".md", ".pdf"}
+
 app = FastAPI(
     title="Feynman Technique Study App",
     description="Backend for AI-persona-driven Feynman Technique studying.",
@@ -385,9 +390,23 @@ async def upload_material(file: UploadFile = File(...)):
     """Accept a study-material file upload and return its extracted text.
     Supports plain text formats natively, and PDFs via pypdf if installed."""
     filename = file.filename or "upload"
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unsupported file type '{ext or '(none)'}'. "
+                "Please upload a .txt, .md, or .pdf file."
+            ),
+        )
+
     raw_bytes = await file.read()
 
-    if filename.lower().endswith(".pdf"):
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="That file is empty.")
+
+    if ext == ".pdf":
         try:
             from pypdf import PdfReader
         except ImportError as exc:
